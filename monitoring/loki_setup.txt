@@ -1,0 +1,113 @@
+https://www.fixmyresume.xyz/Grafana Loki Monitoring Setup
+=============================
+
+Purpose
+-------
+This file documents a simple local Loki setup for collecting container logs.
+
+1. Start Loki
+-------------
+
+Run Loki in Docker:
+
+docker run -d --name loki -p 3100:3100 grafana/loki:3.5.0 -config.file=/etc/loki/local-config.yaml
+
+Check the container:
+
+docker ps --filter name=loki
+
+Check readiness:
+
+curl http://localhost:3100/ready
+
+Expected:
+
+ready
+
+2. Generate container logs
+--------------------------
+
+Run the project container:
+
+docker run --name devops-hello-log devops-hello:1.0
+
+View the Docker container logs:
+
+docker logs devops-hello-log
+
+3. Forward logs to Loki
+-----------------------
+
+For a real local setup, use Grafana Alloy as the log collector. Alloy can read Docker/container logs and send them to Loki.
+
+Example architecture:
+
+Docker containers
+      |
+      v
+Grafana Alloy
+      |
+      v
+Loki :3100
+      |
+      v
+Grafana
+
+The exact Alloy configuration depends on the Docker environment and should be adjusted for the host's Docker socket/log paths.
+
+4. View/query Loki logs
+-----------------------
+
+Loki exposes an HTTP API on port 3100.
+
+Readiness:
+
+curl http://localhost:3100/ready
+
+List available labels:
+
+curl -G http://localhost:3100/loki/api/v1/labels
+
+Query logs after they have been pushed to Loki:
+
+curl -G -s "http://localhost:3100/loki/api/v1/query" --data-urlencode 'query={job="devops-hello"}'
+
+5. Optional Grafana
+-------------------
+
+Run Grafana:
+
+docker run -d --name grafana -p 3000:3000 grafana/grafana:latest
+
+Open:
+
+http://localhost:3000
+
+Add Loki as a data source using:
+
+http://host.docker.internal:3100
+
+On Linux, networking may require the Loki container to be placed on the same Docker network as Grafana or use the host gateway configuration.
+
+6. Useful troubleshooting
+--------------------------
+
+Loki logs:
+
+docker logs loki
+
+Check port:
+
+curl http://localhost:3100/ready
+
+Check running containers:
+
+docker ps
+
+Check application logs:
+
+docker logs devops-hello-log
+
+Cleanup:
+
+docker rm -f devops-hello-log loki grafana
